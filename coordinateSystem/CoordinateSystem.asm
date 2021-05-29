@@ -1,26 +1,3 @@
-
-.
-. How to use:
-. - graphical screen, 109x109 
-. - frequency, 10000 (1000 works as well)
-. - input: 
-.	- color is element of {r - red, w - white, y - yellow, g - green}
-.	- x, y and n are elements of [-5, 5]
-.   - draw a point: 
-.		- pxyK{color}
-.		- where K is optional and if used will draw the point as a cross
-.		- p22r -> draws point at x = 2, y = 2 in red color
-.		- p-23Ky -> draws point as a cross at x = -2, y = 3 in yellow color
-.   - draw a function:
-.		- functions have two ways of input:
-.			- y = x and y = -x : fx{color} and f-x{color}
-.			- y = n: fn{color}
-.			- f-4w -> draws y = -4 function in white color
-.			- fxr -> draws y = x function in red color
-.	- clear screen: c
-.	- exit program: 0
-.
-
 primer  START  0
 
 first
@@ -49,11 +26,14 @@ startLoop
 clr
 	JSUB clearScreen	....function for clearing screen
 	J fun1
-fun
-	JSUB function		....function for drawing functions
-	J fun1
+
 point
 	JSUB drawPointFunction		....function for drawing points
+	J fun1
+
+fun
+	JSUB function		....function for drawing functions
+	
 
 fun1
 	RD stdin			...NL
@@ -65,7 +45,6 @@ fun1
 	J startLoop
 	
 EOP						...end of program, triggered by incorrect input
-	RD stdin
 	RD stdin
 halt    J      halt
 
@@ -86,6 +65,7 @@ clearLoop
 			STA col
 			COMP cols
 		JLT clearLoop
+		
 		LDA =0	
 		STA col
 		LDA row
@@ -270,14 +250,14 @@ concRow2
 	RSUB
 .................
 drawPoint
-	STL jumpPoint ...save L register
-	JSUB getColor  ... get color
-	JSUB calculateAddr ... get address
+	STL jumpPoint 		... save L register
+	JSUB getColor  		... get color of the point
+	JSUB calculateAddr 	... get address
 	LDA color 
-	STCH @address    ... draw point
-	LDA krizec     ... check if 'K' was in input (is set in getColor)
-	COMP =1        ... if krizec == 0, jump to end of function
-	JLT niKrizec
+	STCH @address    	... draw point
+	LDA cross     		... check if 'K' was in input (is set in getColor)
+	COMP =1        		... if cross == 0, jump to end of function
+	JLT resetCross
 	
 	LDA address	   ...draw cross	
 	ADD =109	   ...row + 1
@@ -300,9 +280,9 @@ drawPoint
 	LDA color
 	STCH @address
 	
-niKrizec
+resetCross
 	LDA =0
-	STA krizec	  ... reset krizec variable
+	STA cross	  ... reset cross variable
 	LDL jumpPoint
 	RSUB	
 .................
@@ -313,7 +293,7 @@ getColor
 	TD stdin 		...... testing device before taking input
 	RD stdin
 	COMP =0x67
-	JLT krizecJmp	...if 'K' on input, jump (in reality anything that has ASCII < 0x67 will work)
+	JLT crossJmp	...if 'K' on input, jump (in reality anything that has ASCII < 0x67 will work)
 	COMP =0x77		...'w'-> white
 	JEQ whiteColor
 	COMP =0x72		...'r'-> red	
@@ -325,12 +305,12 @@ getColor
 	
 	J gotColor
 	
-krizecJmp
+crossJmp
 	LDA =1
-	STA krizec		...if 'K' on input, read again to get color
+	STA cross		...if 'K' on input, read again to get color
 	RD stdin
 	COMP =0x67
-	JLT krizec
+	JLT cross
 	COMP =0x77		...'w'-> white
 	JEQ whiteColor
 	COMP =0x72		...'r'-> red	
@@ -499,7 +479,7 @@ screenTemp  WORD 0
 address		WORD 0
 jump		WORD 0
 jumpPoint	WORD 0
-krizec 		WORD 0
+cross 		WORD 0
 x			WORD 0
 tempNeg		WORD 0
 testiram 	WORD 0
