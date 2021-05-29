@@ -1,0 +1,486 @@
+                  
+                  
+                  . How to use:
+                  . - graphical screen, 109x109
+                  . - frequency, 10000 (1000 works as well)
+                  . - input:
+                  . - color is element of {r - red, w - white, y - yellow, g - green}
+                  . - x, y and n are elements of [-5, 5]
+                  . - draw a point:
+                  . - pxyK{color}
+                  . - where K is optional and if used will draw the point as a cross
+                  . - p22r -> draws point at x = 2, y = 2 in red color
+                  . - p-23Ky -> draws point as a cross at x = -2, y = 3 in yellow color
+                  . - draw a function:
+                  . - functions have two ways of input:
+                  . - y = x and y = -x : fx{color} and f-x{color}
+                  . - y = n: fn{color}
+                  . - f-4w -> draws y = -4 function in white color
+                  . - fxr -> draws y = x function in red color
+                  . - clear screen: c
+                  . - exit program: 0
+                  
+                  
+00000            primer                    START   0    
+                  
+00000  0323CE    first                     LDA     rows    ...calculate max screen address
+00003  2323C8                              MUL     cols    
+00006  1B23D4                              ADD     screenOrg    
+00009  0F23D4                              STA     screenMax    
+0000C  0323F5                              LDA     *0 (WORD 0)    
+0000F  4B22D6                              JSUB    initializeCoordinateAxes    ...function that draws initial graph
+                  
+00012  0323F2    startLoop                 LDA     *1 (WORD 36)    
+00015  DF23A6                              WD      stdout    
+00018  E323A2                              TD      stdin    
+0001B  DB239F                              RD      stdin    
+0001E  2B23E9                              COMP    *2 (WORD 48)    ...if '0' on input, end program (inf. loop)
+00021  332033                              JEQ     EOP    
+00024  2B23E6                              COMP    *3 (WORD 102)    ...if 'f' on input, draw function
+00027  332015                              JEQ     fun    
+0002A  2B23E3                              COMP    *4 (WORD 99)    ...if 'c' on input, clear screen
+0002D  332009                              JEQ     clr    
+00030  2B23E0                              COMP    *5 (WORD 112)    
+00033  33200F                              JEQ     point    ...if 'p' on input, draw point
+00036  3F2024                              J       halt    ...if invalid input, end program (inf. loop)
+                  
+00039  4B2024    clr                       JSUB    clearScreen    ....function for clearing screen
+0003C  3F2009                              J       fun1    
+0003F  4B2060    fun                       JSUB    function    ....function for drawing functions
+00042  3F2003                              J       fun1    
+00045  4B2096    point                     JSUB    drawPointFunction    ....function for drawing points
+                  
+00048  DB2372    fun1                      RD      stdin    ...NL
+                  ...RD stdin			...CR
+                  
+0004B  0323B6                              LDA     *0 (WORD 0)    
+0004E  0F2383                              STA     col    ...reset row and column that were used
+00051  0F2383                              STA     row    
+00054  3F2FBB                              J       startLoop    
+                  
+00057  DB2363    EOP                       RD      stdin    
+0005A  DB2360                              RD      stdin    
+0005D  3F2FFD    halt                      J       halt    
+                  
+                  .................
+00060  172389    clearScreen               STL     jumpPoint    ...save L register
+00063  03239E                              LDA     *0 (WORD 0)    
+00066  0F236E                              STA     row    
+00069  0F2368                              STA     col    
+                  
+                  ...Nested loop that iterates over the whole screen, setting every address to 0
+0006C  4B2261    clearLoop                 JSUB    calculateAddr    ...Calculates the address
+0006F  032392                              LDA     *0 (WORD 0)    
+00072  0E2371                              STA     @address    
+00075  03235C                              LDA     col    
+00078  1B239B                              ADD     *6 (WORD 3)    
+0007B  0F2356                              STA     col    
+0007E  2B234D                              COMP    cols    
+00081  3B2FE8                              JLT     clearLoop    
+00084  03237D                              LDA     *0 (WORD 0)    
+00087  0F234A                              STA     col    
+0008A  03234A                              LDA     row    
+0008D  1B2389                              ADD     *7 (WORD 1)    
+00090  0F2344                              STA     row    
+00093  2B233B                              COMP    rows    
+00096  3B2FD3                              JLT     clearLoop    
+                  
+00099  4B224C                              JSUB    initializeCoordinateAxes    ...after screen cleared, redraw graph
+0009C  0B234D                              LDL     jumpPoint    ...reload L register
+0009F  4F0000                              RSUB        
+                  
+                  .................
+                  
+                  ...Function for drawing functions(jump here if 'f' on input)
+000A2  172344    function                  STL     jump    ...save L register
+                  
+000A5  4B2048                              JSUB    getFun    ...Read other parameters of input
+000A8  032356                              LDA     functionSpr    ...variable that tells us what kind of function we have
+000AB  2B2356                              COMP    *0 (WORD 0)    ...if functionSpr == 0 then we have a function of type y = 2 (not dependant on x)
+000AE  37201E                              JGT     functionDone    ...skip if functionSpr > 0, because it was already drawn
+000B1  4B21A1                              JSUB    getColor    
+000B4  03234D                              LDA     *0 (WORD 0)    
+                  
+000B7  0F231A    functionLoop              STA     col    
+000BA  4B2213                              JSUB    calculateAddr    
+000BD  03230B                              LDA     color    
+000C0  562323                              STCH    @address    
+000C3  03230E                              LDA     col    
+000C6  1B2350                              ADD     *7 (WORD 1)    
+000C9  2B2302                              COMP    cols    
+000CC  3B2FE8                              JLT     functionLoop    
+                  
+000CF  032332    functionDone              LDA     *0 (WORD 0)    
+000D2  0F22FF                              STA     col    
+000D5  0F22FF                              STA     row    
+000D8  0B230E                              LDL     jump    ...reload L register
+000DB  4F0000                              RSUB        
+                  .................
+                  ...Function for drawing points
+000DE  172308    drawPointFunction         STL     jump    
+                  
+000E1  4B2075                              JSUB    getCol    ..gets column where we want to draw
+000E4  4B20AB                              JSUB    getRow    ..gets row where we want to draw
+000E7  4B210B                              JSUB    drawPoint    ..draws the point
+                  
+000EA  0B22FC                              LDL     jump    
+000ED  4F0000                              RSUB        
+                  .................
+000F0  1722F9    getFun                    STL     jumpPoint    ...save L register
+                  
+000F3  4B209C                              JSUB    getRow    ...get the function that was on input
+000F6  032308                              LDA     functionSpr    
+000F9  2B2308                              COMP    *0 (WORD 0)    
+000FC  332054                              JEQ     gotFun    ...if function of type y = n (not dependant of x), then draw it in the other subroutine
+000FF  4B2153                              JSUB    getColor    ...otherwise get color
+00102  2B2317                              COMP    *8 (WORD 2)    
+00105  332006                              JEQ     posFunction    ...y = x
+00108  2B230E                              COMP    *7 (WORD 1)    
+0010B  33202A                              JEQ     negFunction    ...y = -x
+                  
+                  
+0010E  0322CF    posFunction               LDA     screenMax    ...start at first column of last row
+00111  1F230B                              SUB     *9 (WORD 110)    
+00114  0F22CF                              STA     address    
+00117  0322C3                              LDA     screenOrg    
+0011A  1B2305                              ADD     *10 (WORD 109)    
+0011D  0F22C3                              STA     screenTemp    ...end at last column of first row
+                  
+00120  0322A8    posFunLoop                LDA     color    
+00123  5622C0                              STCH    @address    
+00126  0322BD                              LDA     address    
+00129  1F22F9                              SUB     *11 (WORD 108)    ...equivalent to: row - 1, col - 1
+0012C  0F22B7                              STA     address    
+0012F  2B22B1                              COMP    screenTemp    
+00132  372FEB                              JGT     posFunLoop    
+00135  3F201B                              J       gotFun    
+                  
+00138  0322A5    negFunction               LDA     screenMax    ...start at last column of last row
+0013B  0F22A8                              STA     address    
+                  
+0013E  03228A    negFunLoop                LDA     color    
+00141  5622A2                              STCH    @address    
+00144  03229F                              LDA     address    
+00147  1F22D5                              SUB     *9 (WORD 110)    ...equivalent to: row + 1, col + 1
+0014A  0F2299                              STA     address    
+0014D  2B228D                              COMP    screenOrg    ...end at first element of screen
+00150  372FEB                              JGT     negFunLoop    
+                  
+00153  0B2296    gotFun                    LDL     jumpPoint    ...reload L register
+00156  4F0000                              RSUB        
+                  
+                  .................
+00159  0322A8    getCol                    LDA     *0 (WORD 0)    
+0015C  0F2275                              STA     col    
+0015F  E3225B                              TD      stdin    
+00162  DB2258                              RD      stdin    ...get column where to draw from input: [-5,5]
+00165  2B22C0                              COMP    *12 (WORD 45)    ...if '-' on input
+00168  33200C                              JEQ     colNeg    
+                  
+                  ....positive x coordinate, normalize input according to size of screen
+0016B  1F229C                              SUB     *2 (WORD 48)    
+0016E  2322BA                              MUL     *13 (WORD 10)    
+00171  1B22BA                              ADD     *14 (WORD 54)    
+00174  3F2015                              J       concCol    
+                  
+                  ....negative x coordinate, normalize input according to size of screen
+00177  DB2243    colNeg                    RD      stdin    
+0017A  1F228D                              SUB     *2 (WORD 48)    
+0017D  0F2275                              STA     tempNeg    
+00180  0322AE                              LDA     *15 (WORD 5)    
+00183  1F226F                              SUB     tempNeg    
+00186  2322A2                              MUL     *13 (WORD 10)    
+00189  1B228A                              ADD     *6 (WORD 3)    
+                  
+0018C  0F2245    concCol                   STA     col    ...store normalized input to variable
+0018F  4F0000                              RSUB        
+                  .................
+                  
+                  ...Same as getCol, except for functions part
+00192  03226F    getRow                    LDA     *0 (WORD 0)    
+00195  0F223F                              STA     row    
+00198  E32222                              TD      stdin    ... testing device before taking input
+0019B  DB221F                              RD      stdin    
+0019E  2B2293                              COMP    *16 (WORD 120)    
+001A1  332033                              JEQ     functionPos    
+001A4  2B2281                              COMP    *12 (WORD 45)    
+001A7  332018                              JEQ     negRow    
+                  
+                  ....primer positivne koordinate y-os
+001AA  1F225D                              SUB     *2 (WORD 48)    
+001AD  0F2245                              STA     tempNeg    
+001B0  03227E                              LDA     *15 (WORD 5)    
+001B3  1F223F                              SUB     tempNeg    
+001B6  0F223F                              STA     testiram    
+001B9  23226F                              MUL     *13 (WORD 10)    
+001BC  1B2257                              ADD     *6 (WORD 3)    
+001BF  3F2027                              J       concRow    
+                  
+001C2  DB21F8    negRow                    RD      stdin    
+001C5  2B226C                              COMP    *16 (WORD 120)    
+001C8  332015                              JEQ     functionNeg    
+001CB  1F223C                              SUB     *2 (WORD 48)    
+001CE  23225A                              MUL     *13 (WORD 10)    
+001D1  1B225A                              ADD     *14 (WORD 54)    
+001D4  3F2012                              J       concRow    
+                  
+                  ....if input is a positive function
+001D7  032242    functionPos               LDA     *8 (WORD 2)    
+001DA  0F2224                              STA     functionSpr    
+001DD  3F2012                              J       concRow2    
+                  
+                  ....if input is a negative function
+001E0  032236    functionNeg               LDA     *7 (WORD 1)    
+001E3  0F221B                              STA     functionSpr    
+001E6  3F2009                              J       concRow2    
+                  
+                  ...when done, store to varibles
+001E9  0F21EB    concRow                   STA     row    
+001EC  032215                              LDA     *0 (WORD 0)    
+001EF  0F220F                              STA     functionSpr    ...if input function is not dependant on x
+001F2  4F0000    concRow2                  RSUB        
+                  .................
+001F5  1721F4    drawPoint                 STL     jumpPoint    ...save L register
+001F8  4B205A                              JSUB    getColor    ... get color
+001FB  4B20D2                              JSUB    calculateAddr    ... get address
+001FE  0321CA                              LDA     color    
+00201  5621E2                              STCH    @address    ... draw point
+00204  0321E8                              LDA     krizec    ... check if 'K' was in input (is set in getColor)
+00207  2B220F                              COMP    *7 (WORD 1)    ... if krizec == 0, jump to end of function
+0020A  3B203C                              JLT     niKrizec    
+                  
+0020D  0321D6                              LDA     address    ...draw cross
+00210  1B220F                              ADD     *10 (WORD 109)    ...row + 1
+00213  0F21D0                              STA     address    
+00216  0321B2                              LDA     color    
+00219  5621CA                              STCH    @address    
+0021C  0321C7                              LDA     address    
+0021F  1F2203                              SUB     *11 (WORD 108)    ...row - 1, col + 1
+00222  0F21C1                              STA     address    
+00225  0321A3                              LDA     color    
+00228  5621BB                              STCH    @address    
+0022B  0321B8                              LDA     address    
+0022E  1F21EB                              SUB     *8 (WORD 2)    ...col - 2
+00231  0F21B2                              STA     address    
+00234  032194                              LDA     color    
+00237  5621AC                              STCH    @address    
+0023A  0321A9                              LDA     address    
+0023D  1F21E5                              SUB     *11 (WORD 108)    ...row - 1, col + 1
+00240  0F21A3                              STA     address    
+00243  032185                              LDA     color    
+00246  56219D                              STCH    @address    
+                  
+00249  0321B8    niKrizec                  LDA     *0 (WORD 0)    
+0024C  0F21A0                              STA     krizec    ... reset krizec variable
+0024F  0B219A                              LDL     jumpPoint    
+00252  4F0000                              RSUB        
+                  .................
+                  
+                  ...Function that reads the color from input
+00255  0F2182    getColor                  STA     temp    
+00258  E32162                              TD      stdin    ...... testing device before taking input
+0025B  DB215F                              RD      stdin    
+0025E  2B21D6                              COMP    *17 (WORD 103)    
+00261  3B201B                              JLT     krizecJmp    ...if 'K' on input, jump (in reality anything that has ASCII < 0x67 will work)
+00264  2B21D3                              COMP    *18 (WORD 119)    ...'w'-> white
+00267  332057                              JEQ     whiteColor    
+0026A  2B21D0                              COMP    *19 (WORD 114)    ...'r'-> red
+0026D  332048                              JEQ     redColor    
+00270  2B21C4                              COMP    *17 (WORD 103)    ...'g'-> green
+00273  332039                              JEQ     greenColor    
+00276  2B21C7                              COMP    *20 (WORD 121)    ...'y'-> yellow
+00279  33202A                              JEQ     yellowColor    
+                  
+0027C  3F204B                              J       gotColor    
+                  
+0027F  032197    krizecJmp                 LDA     *7 (WORD 1)    
+00282  0F216A                              STA     krizec    ...if 'K' on input, read again to get color
+00285  DB2135                              RD      stdin    
+00288  2B21AC                              COMP    *17 (WORD 103)    
+0028B  3B2161                              JLT     krizec    
+0028E  2B21A9                              COMP    *18 (WORD 119)    ...'w'-> white
+00291  33202D                              JEQ     whiteColor    
+00294  2B21A6                              COMP    *19 (WORD 114)    ...'r'-> red
+00297  33201E                              JEQ     redColor    
+0029A  2B219A                              COMP    *17 (WORD 103)    ...'g'-> green
+0029D  33200F                              JEQ     greenColor    
+002A0  2B219D                              COMP    *20 (WORD 121)    ...'y'-> yellow
+002A3  332000                              JEQ     yellowColor    
+                  
+                  ...Store colors into color variable
+002A6  03211F    yellowColor               LDA     yellow    
+002A9  0F211F                              STA     color    
+002AC  3F201B                              J       gotColor    
+                  
+002AF  032113    greenColor                LDA     green    
+002B2  0F2116                              STA     color    
+002B5  3F2012                              J       gotColor    
+                  
+002B8  032107    redColor                  LDA     red    
+002BB  0F210D                              STA     color    
+002BE  3F2009                              J       gotColor    
+                  
+002C1  0320FB    whiteColor                LDA     white    
+002C4  0F2104                              STA     color    
+002C7  3F2000                              J       gotColor    
+                  
+002CA  03210D    gotColor                  LDA     temp    
+002CD  4F0000                              RSUB        
+                  
+                  ..................
+                  
+                  ..Function for calculation of address: row * COLUMNS + col + screenOrg
+002D0  0F2107    calculateAddr             STA     temp    
+002D3  032101                              LDA     row    
+002D6  2320F5                              MUL     cols    
+002D9  1B20F8                              ADD     col    
+002DC  1B20FE                              ADD     screenOrg    
+002DF  0F2104                              STA     address    
+002E2  0320F5                              LDA     temp    
+002E5  4F0000                              RSUB        
+                  
+                  ..................
+                  
+                  ..Function that draws inital graph (x and y axis)
+002E8  1720FE    initializeCoordinateAxes  STL     jump    ..save L register
+002EB  0F20EC                              STA     temp    
+002EE  032113                              LDA     *0 (WORD 0)    ..Start in center of the first row
+002F1  0F20E3                              STA     row    
+002F4  032137                              LDA     *14 (WORD 54)    
+002F7  0F20DA                              STA     col    
+                  
+                  ..draw y axis
+002FA  4B2FD3    navpCrta                  JSUB    calculateAddr    
+002FD  0320BF                              LDA     white    
+00300  5620E3                              STCH    @address    
+00303  0320D1                              LDA     row    
+00306  1B2110                              ADD     *7 (WORD 1)    
+00309  2B20C5                              COMP    rows    
+0030C  0F20C8                              STA     row    
+0030F  3B2FE8                              JLT     navpCrta    
+                  
+00312  032119                              LDA     *14 (WORD 54)    
+00315  0F20BF                              STA     row    
+00318  0320E9                              LDA     *0 (WORD 0)    
+0031B  0F20B6                              STA     col    
+                  
+                  ..draw x axis
+0031E  4B2FAF    vodCrta                   JSUB    calculateAddr    
+00321  03209B                              LDA     white    
+00324  5620BF                              STCH    @address    
+00327  0320AA                              LDA     col    
+0032A  1B20EC                              ADD     *7 (WORD 1)    
+0032D  2B209E                              COMP    cols    
+00330  0F20A1                              STA     col    
+00333  3B2FE8                              JLT     vodCrta    
+                  
+00336  0320DD                              LDA     *6 (WORD 3)    
+00339  0F209B                              STA     row    
+                  
+                  ..draw "flare" on y axis (number indicators (i guess?))
+                  .. this is a bit awkward, because I didn't use the perfect screen size (row, col)
+                  .. meaning it is not exactly symmetric, hence so many jumps inside the loop.
+                  .. Essentially it draws 2 points around the axis and skips 10 rows ahead,
+                  .. which normalized translates to 1 row -> it jumps to the next number,
+                  .. if the next number is 0 (if we are in row 43) it jumps 21 rows,
+                  .. to maintain "symmetry" of the graph
+0033C  032104    navpFlare                 LDA     *21 (WORD 53)    
+0033F  0F2092                              STA     col    
+00342  4B2F8B                              JSUB    calculateAddr    
+00345  032077                              LDA     white    
+00348  56209B                              STCH    @address    
+0034B  0320F8                              LDA     *22 (WORD 55)    
+0034E  0F2083                              STA     col    
+00351  4B2F7C                              JSUB    calculateAddr    
+00354  032068                              LDA     white    
+00357  56208C                              STCH    @address    
+0035A  03207A                              LDA     row    
+0035D  2B20E9                              COMP    *23 (WORD 43)    
+00360  332006                              JEQ     navpDrugAdd    
+00363  1B20C5                              ADD     *13 (WORD 10)    
+00366  3F2003                              J       navpAdd10    
+00369  1B20E0    navpDrugAdd               ADD     *24 (WORD 21)    
+0036C  2B2062    navpAdd10                 COMP    rows    
+0036F  0F2065                              STA     row    
+00372  3B2FC7                              JLT     navpFlare    
+                  
+00375  03209E                              LDA     *6 (WORD 3)    
+00378  0F2059                              STA     col    
+                  
+                  ...Same thing as y axis flare, just for x axis
+0037B  0320C5    vodFlare                  LDA     *21 (WORD 53)    
+0037E  0F2056                              STA     row    
+00381  4B2F4C                              JSUB    calculateAddr    
+00384  032038                              LDA     white    
+00387  56205C                              STCH    @address    
+0038A  0320B9                              LDA     *22 (WORD 55)    
+0038D  0F2047                              STA     row    
+00390  4B2F3D                              JSUB    calculateAddr    
+00393  032029                              LDA     white    
+00396  56204D                              STCH    @address    
+00399  032038                              LDA     col    
+0039C  2B20AA                              COMP    *23 (WORD 43)    
+0039F  332006                              JEQ     vodDrugAdd    
+003A2  1B2086                              ADD     *13 (WORD 10)    
+003A5  3F2003                              J       vodAdd10    
+003A8  1B20A1    vodDrugAdd                ADD     *24 (WORD 21)    
+003AB  2B2020    vodAdd10                  COMP    cols    
+003AE  0F2023                              STA     col    
+003B1  3B2FC7                              JLT     vodFlare    
+003B4  032023                              LDA     temp    
+003B7  0B202F                              LDL     jump    
+003BA  4F0000                              RSUB        
+                  ...........................End of initializeCoordinateAxes
+                  
+                  . data
+003BD  00        stdin                     BYTE    X'00'    
+003BE  01        stdout                    BYTE    X'01'    
+003BF  0000FF    white                     WORD    255    
+003C2  0000F0    red                       WORD    240    
+003C5  0000CC    green                     WORD    204    
+003C8  0000FC    yellow                    WORD    252    
+003CB  000079    color                     WORD    121    
+003CE  00006D    cols                      WORD    109    
+003D1  00006D    rows                      WORD    109    
+003D4  000000    col                       WORD    0    
+003D7  000000    row                       WORD    0    
+003DA  000000    temp                      WORD    0    
+003DD  00A000    screenOrg                 WORD    40960    
+003E0  000000    screenMax                 WORD    0    
+003E3  000000    screenTemp                WORD    0    
+003E6  000000    address                   WORD    0    
+003E9  000000    jump                      WORD    0    
+003EC  000000    jumpPoint                 WORD    0    
+003EF  000000    krizec                    WORD    0    
+003F2  000000    x                         WORD    0    
+003F5  000000    tempNeg                   WORD    0    
+003F8  000000    testiram                  WORD    0    
+003FB  000000    testiram1                 WORD    0    
+003FE  000000    testiram2                 WORD    0    
+00401  000000    functionSpr               WORD    0    ..... 0 = ni function odvisna od x, 1 => y = x, 2 => y = -x
+00404  000000    *0                        WORD    0    
+00407  000024    *1                        WORD    36    
+0040A  000030    *2                        WORD    48    
+0040D  000066    *3                        WORD    102    
+00410  000063    *4                        WORD    99    
+00413  000070    *5                        WORD    112    
+00416  000003    *6                        WORD    3    
+00419  000001    *7                        WORD    1    
+0041C  000002    *8                        WORD    2    
+0041F  00006E    *9                        WORD    110    
+00422  00006D    *10                       WORD    109    
+00425  00006C    *11                       WORD    108    
+00428  00002D    *12                       WORD    45    
+0042B  00000A    *13                       WORD    10    
+0042E  000036    *14                       WORD    54    
+00431  000005    *15                       WORD    5    
+00434  000078    *16                       WORD    120    
+00437  000067    *17                       WORD    103    
+0043A  000077    *18                       WORD    119    
+0043D  000072    *19                       WORD    114    
+00440  000079    *20                       WORD    121    
+00443  000035    *21                       WORD    53    
+00446  000037    *22                       WORD    55    
+00449  00002B    *23                       WORD    43    
+0044C  000015    *24                       WORD    21    
+0044F                                      END     first    
