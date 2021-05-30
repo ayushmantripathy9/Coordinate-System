@@ -8,92 +8,118 @@ first
 	LDA =0
 	JSUB initializeCoordinateAxes   ...function that draws initial graph
 	
+.........................
+
 startLoop
 	LDA =0x24
 	WD stdout
-	JSUB takeInput
+	JSUB enterInput
 	TD stdin
 	RD stdin			
 	COMP =0x30			...if '0' on input, end program (inf. loop)
 	JEQ EOP
-	COMP =0x66			...if 'f' on input, draw function
+	COMP =0x70			...if 'p' on input, print point
+	JEQ point			
+	COMP =0x66			...if 'f' on input, print function
 	JEQ fun
 	COMP =0x63			...if 'c' on input, clear screen
 	JEQ clr
-	COMP =0x70
-	JEQ point			...if 'p' on input, draw point
-	J halt				...if invalid input, end program (inf. loop)
+	J endmsg			...if invalid input, end program (inf. loop)
 
-takeInput
-	LDCH commandInput, X
+...........................
+
+enterInput
+	LDCH commandInput, X	...print the message requesting for enter input
 	WD stdout
 	TIX =15
-	JLT takeInput
+	JLT enterInput
 	LDX =0
 	RSUB
 
+fun
+	JSUB function		....function for drawing functions
+	J again
 
 clr
 	JSUB clearScreen	....function for clearing screen
-	J fun1
+	J again
 
 point
 	JSUB drawPointFunction		....function for drawing points
-	J fun1
 
-fun
-	JSUB function		....function for drawing functions
-	
-
-fun1
-	RD stdin			...NL
-	...RD stdin			...CR
-
+again
+	RD stdin			...Next line
 	LDA =0
 	STA col				...reset row and column that were used
 	STA row
 	J startLoop
-	
+
+..........................
+
 EOP						...end of program, triggered by incorrect input
 	RD stdin
+
+endmsg
+	LDCH prgmendmsg, X		...print the message that program has ended
+	WD stdout
+	TIX =22
+	JLT endmsg
+	LDX =0
+	LDA =0x0A
+	WD stdout
+	J halt
+
 halt    J      halt
 
 .................
+
+...calculating the address of a cell- row * cols + col + screenOrg
+calcAddr
+	STA temp
+	LDA row
+	MUL cols
+	ADD col
+	ADD screenOrg
+	STA address
+	LDA temp
+	RSUB
+	
+..................
+
 clearScreen
-	STL jumpPoint	...save L register
+	STL jumpPoint
 	LDA =0
 	STA row
 	STA col
 	
-	...Nested loop that iterates over the whole screen, setting every address to 0
+	...Nested loop that iterates over the whole screen, setting all the address to 0
 clearLoop
-			JSUB calculateAddr	...Calculates the address
-			LDA =0
-			STA @address
-			LDA col
-			ADD =3
-			STA col
-			COMP cols
-		JLT clearLoop
-		
-		LDA =0	
-		STA col
-		LDA row
-		ADD =1	
-		STA row
-		COMP rows	
+	JSUB calcAddr	...Calculates the address
+	LDA =0
+	STA @address
+	LDA col
+	ADD =3
+	STA col
+	COMP cols
 	JLT clearLoop
 		
-	JSUB initializeCoordinateAxes	...after screen cleared, redraw graph
-	LDL jumpPoint	...reload L register
+	LDA =0	
+	STA col
+	LDA row
+	ADD =1	
+	STA row
+	COMP rows	
+	JLT clearLoop
+		
+	JSUB initializeCoordinateAxes	...after screen is cleared, redraw axes
+	LDL jumpPoint
 	RSUB
 	
 .................
 
-...Function for drawing functions(jump here if 'f' on input)
+...Utility to draw functions('f' as input)
 function
-	STL jump	...save L register
-	
+	STL jump
 	JSUB getFun		...Read other parameters of input
 	LDA functionSpr	...variable that tells us what kind of function we have
 	COMP =0			...if functionSpr == 0 then we have a function of type y = 2 (not dependant on x)
@@ -103,7 +129,7 @@ function
 	
 functionLoop		...Draw the function if functionSpr = 0
 		STA col
-		JSUB calculateAddr
+		JSUB calcAddr
 		LDA color
 		STCH @address
 		LDA col 
@@ -115,9 +141,11 @@ functionDone	.... When done reset col and row
 	LDA =0
 	STA col
 	STA row
-	LDL jump	...reload L register
+	LDL jump
 	RSUB
+
 .................	
+
 ...Function for drawing points
 drawPointFunction
 	STL jump
@@ -130,8 +158,7 @@ drawPointFunction
 	RSUB
 .................
 getFun
-	STL jumpPoint	...save L register
-	
+	STL jumpPoint	...save L register	
 	JSUB getRow     ...get the function that was on input
 	LDA functionSpr 
 	COMP =0
@@ -179,6 +206,7 @@ gotFun
 	RSUB
 	
 .................	
+
 getCol
 	LDA =0	
 	STA col
@@ -206,9 +234,10 @@ colNeg
 concCol
 	STA col	...store normalized input to variable
 	RSUB
+
 .................
 
-...Same as getCol, except for functions part
+...Same as getCol
 getRow 
 	LDA =0
 	STA row
@@ -258,17 +287,19 @@ concRow
 	STA functionSpr ...if input function is not dependant on x
 concRow2
 	RSUB
+
 .................
+
 drawPoint
 	STL jumpPoint 		... save L register
 	JSUB getColor  		... get color of the point
-	JSUB calculateAddr 	... get address
+	JSUB calcAddr 	... get address
 	LDA color 
 	STCH @address    	... draw point
 	LDA cross     		... check if 'K' was in input (is set in getColor)
 	COMP =1        		... if cross == 0, jump to end of function
 	JLT resetCross
-	
+	...
 	LDA address	   ...draw cross	
 	ADD =109	   ...row + 1
 	STA address
@@ -295,6 +326,7 @@ resetCross
 	STA cross	  ... reset cross variable
 	LDL jumpPoint
 	RSUB	
+	
 .................
 
 ...Function that reads the color from input
@@ -357,19 +389,6 @@ gotColor
 
 ..................
 
-..Function for calculation of address: row * COLUMNS + col + screenOrg
-calculateAddr
-	STA temp
-	LDA row
-	MUL cols
-	ADD col
-	ADD screenOrg
-	STA address
-	LDA temp
-	RSUB
-	
-..................
-
 ..Function that draws inital graph (x and y axis)
 initializeCoordinateAxes
 	STL jump		..save L register
@@ -381,7 +400,7 @@ initializeCoordinateAxes
 	
 	..draw y axis
 navpCrta
-		JSUB calculateAddr	
+		JSUB calcAddr	
 		LDA white
 		STCH @address
 		LDA row 
@@ -397,7 +416,7 @@ navpCrta
 	
 	..draw x axis
 vodCrta
-		JSUB calculateAddr
+		JSUB calcAddr
 		LDA white
 		STCH @address
 		LDA col 
@@ -419,12 +438,12 @@ vodCrta
 navpFlare
 		LDA =53
 		STA col
-		JSUB calculateAddr
+		JSUB calcAddr
 		LDA white
 		STCH @address
 		LDA =55
 		STA col
-		JSUB calculateAddr
+		JSUB calcAddr
 		LDA white
 		STCH @address
 		LDA row 
@@ -446,12 +465,12 @@ navpAdd10
 vodFlare
 		LDA =53
 		STA row
-		JSUB calculateAddr
+		JSUB calcAddr
 		LDA white
 		STCH @address
 		LDA =55
 		STA row
-		JSUB calculateAddr
+		JSUB calcAddr
 		LDA white
 		STCH @address
 		LDA col 
@@ -497,4 +516,5 @@ testiram1 	WORD 0
 testiram2 	WORD 0
 functionSpr	WORD 0 ..... 0 = ni function odvisna od x, 1 => y = x, 2 => y = -x
 commandInput BYTE C'Enter Command :'
+prgmendmsg BYTE C'Program has terminated'
 			END    first
