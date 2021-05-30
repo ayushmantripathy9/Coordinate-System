@@ -11,6 +11,7 @@ first
 startLoop
 	LDA =0x24
 	WD stdout
+	JSUB takeInput
 	TD stdin
 	RD stdin			
 	COMP =0x30			...if '0' on input, end program (inf. loop)
@@ -22,7 +23,16 @@ startLoop
 	COMP =0x70
 	JEQ point			...if 'p' on input, draw point
 	J halt				...if invalid input, end program (inf. loop)
-	
+
+takeInput
+	LDCH commandInput, X
+	WD stdout
+	TIX =15
+	JLT takeInput
+	LDX =0
+	RSUB
+
+
 clr
 	JSUB clearScreen	....function for clearing screen
 	J fun1
@@ -486,4 +496,5 @@ testiram 	WORD 0
 testiram1 	WORD 0
 testiram2 	WORD 0
 functionSpr	WORD 0 ..... 0 = ni function odvisna od x, 1 => y = x, 2 => y = -x
+commandInput BYTE C'Enter Command :'
 			END    first
