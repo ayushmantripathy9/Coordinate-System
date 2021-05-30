@@ -11,8 +11,6 @@ first
 .........................
 
 startLoop
-	LDA =0x24
-	WD stdout
 	JSUB enterInput
 	TD stdin
 	RD stdin			
@@ -31,9 +29,11 @@ startLoop
 enterInput
 	LDCH commandInput, X	...print the message requesting for enter input
 	WD stdout
-	TIX =15
+	TIX =14
 	JLT enterInput
 	LDX =0
+	LDA =0x24
+	WD stdout
 	RSUB
 
 fun
@@ -301,22 +301,24 @@ drawPoint
 	JLT resetCross
 	...
 	LDA address	   ...draw cross	
-	ADD =109	   ...row + 1
+	SUB =108	   ...row - 1 + col + 1
 	STA address
 	LDA color
 	STCH @address
 	LDA address
-	SUB =108       ...row - 1, col + 1
+	SUB =2       ...row - 1, col + 1
 	STA address
 	LDA color
 	STCH @address
 	LDA address
-	SUB =2         ...col - 2
+	ADD =110
+	ADD =108
+         ...col - 2
 	STA address
 	LDA color
 	STCH @address
 	LDA address
-	SUB =108       ...row - 1, col + 1
+	ADD =2       ...row - 1, col + 1
 	STA address
 	LDA color
 	STCH @address
@@ -515,6 +517,6 @@ testiram 	WORD 0
 testiram1 	WORD 0
 testiram2 	WORD 0
 functionSpr	WORD 0 ..... 0 = ni function odvisna od x, 1 => y = x, 2 => y = -x
-commandInput BYTE C'Enter Command :'
+commandInput BYTE C'Enter Command '
 prgmendmsg BYTE C'Program has terminated'
 			END    first
