@@ -254,9 +254,9 @@ getCol
 colNeg
 	RD stdin
 	SUB =48
-	STA tempNeg
+	STA negativeTemp
 	LDA =5
-	SUB tempNeg
+	SUB negativeTemp
 	MUL =10
 	ADD =3
 	
@@ -280,7 +280,7 @@ getRow
 	COMP =0x2D						... checks if '-' is present
 	JEQ negativeFunction			... draw y = -x or y = -ve constant, if input is '-'
 	
-	...find the position of the line above x-axis in the graphical screen
+	... find the position of the line above x-axis in the graphical screen
 	SUB =48
 	MUL =-10
 	ADD =53
@@ -368,29 +368,29 @@ resetCross
 getColor
 	STA temp
 	
-	TD stdin 		... testing device before taking input
+	TD stdin 			... testing device before taking input
 	RD stdin
 	
 	COMP =0x67
-	JLT crossJmp	... if 'K' on input (also any variable with ascii less than 'K' would work)
+	JLT crossJmp		... if 'K' on input (also any variable with ascii less than 'K' would work)
 	
-	COMP =0x77		... 'w'-> white
+	COMP =0x77			... 'w'-> white
 	JEQ whiteColor
 	
-	COMP =0x72		... 'r'-> red	
+	COMP =0x72			... 'r'-> red	
 	JEQ redColor
 	
-	COMP =0x67		... 'g'-> green
+	COMP =0x67			... 'g'-> green
 	JEQ greenColor
 	
-	COMP =0x79		... 'y'-> yellow
-	JEQ yellowColor
+	COMP =0x79			... 'y'-> yellow
+	JEQ yellowColor	
 	
 	J gotColor
 	
 crossJmp
 	LDA =1
-	STA cross		... if 'K' on input, read again to get color
+	STA cross			... if 'K' on input, read again to get color
 	
 	TD stdin
 	RD stdin
@@ -398,16 +398,16 @@ crossJmp
 	COMP =0x67
 	JLT cross
 	
-	COMP =0x77		... 'w'-> white
+	COMP =0x77			... 'w'-> white
 	JEQ whiteColor
 	
-	COMP =0x72		... 'r'-> red	
+	COMP =0x72			... 'r'-> red	
 	JEQ redColor
 	
-	COMP =0x67		... 'g'-> green
+	COMP =0x67			... 'g'-> green
 	JEQ greenColor
 	
-	COMP =0x79		... 'y'-> yellow
+	COMP =0x79			... 'y'-> yellow
 	JEQ yellowColor	
 	
 ... Store colors into color variable
@@ -439,15 +439,14 @@ gotColor
 
 ... Function to draw the coordinate axes
 initializeCoordinateAxes
-	STL jump		... save L register
+	STL jump			... save L register
 	STA temp
-	LDA =0			... Start in center of the first row
+	LDA =0				... Start in center of the first row
 	STA row		
 	LDA =54			
 	STA col
 	
-	..draw y axis
-navpCrta
+drawAxisY				... plots the y-axis
 		JSUB calcAddr	
 		LDA white
 		STCH @address
@@ -455,15 +454,14 @@ navpCrta
 		ADD =1
 		COMP rows
 		STA row
-	JLT navpCrta
+	JLT drawAxisY
 	
 	LDA =54
 	STA row
 	LDA =0
 	STA col
 	
-	..draw x axis
-vodCrta
+drawAxisX				... plots the x-axis
 		JSUB calcAddr
 		LDA white
 		STCH @address
@@ -471,99 +469,115 @@ vodCrta
 		ADD =1
 		COMP cols
 		STA col
-	JLT vodCrta
+	JLT drawAxisX
 	
 	LDA =3
 	STA row
 	
-	..draw "flare" on y axis (number indicators (i guess?))
-	.. this is a bit awkward, because I didn't use the perfect screen size (row, col)
-	.. meaning it is not exactly symmetric, hence so many jumps inside the loop.
-	.. Essentially it draws 2 points around the axis and skips 10 rows ahead, 
-	.. which normalized translates to 1 row -> it jumps to the next number,
-	.. if the next number is 0 (if we are in row 43) it jumps 21 rows,
-	.. to maintain "symmetry" of the graph
-navpFlare
-		LDA =53
+
+drawMarxkersY			... plots the markings on the y-axis
+		LDA =53			... plot left of the x-axis
 		STA col
 		JSUB calcAddr
 		LDA white
 		STCH @address
-		LDA =55
+		
+		LDA =55			... plot right of the x-axis
 		STA col
 		JSUB calcAddr
 		LDA white
 		STCH @address
+		
 		LDA row 
 		COMP =43
-		JEQ navpDrugAdd
+		JEQ drawOppositeMarkersY
 		ADD =10
-		J navpAdd10
-navpDrugAdd	
+		
+		J drawNextMarkerY
+		
+drawOppositeMarkersY	
 		ADD =21		
-navpAdd10	
+
+drawNextMarkerY	
 		COMP rows
 		STA row
-	JLT navpFlare
+	JLT drawMarxkersY
 
 	LDA =3
 	STA col
 	
-	...Same thing as y axis flare, just for x axis
-vodFlare
-		LDA =53
+drawMarxkersX			... plots the markings on the x-axis
+		LDA =53			... plot above the x-axis
 		STA row
 		JSUB calcAddr
 		LDA white
 		STCH @address
-		LDA =55
+		
+		LDA =55			... plot below the x-axis
 		STA row
 		JSUB calcAddr
 		LDA white
 		STCH @address
+		
 		LDA col 
 		COMP =43
-		JEQ vodDrugAdd
+		JEQ drawOppositeMarkersX
 		ADD =10
-		J vodAdd10
-vodDrugAdd	
+		
+		J drawNextMarkerX
+
+drawOppositeMarkersX	
 		ADD =21		
-vodAdd10	
+
+drawNextMarkerX	
 		COMP cols
 		STA col
-	JLT vodFlare
+	JLT drawMarxkersX
+	
 	LDA temp
 	LDL jump
-	RSUB
 	
+	RSUB
+
 .... End of initializeCoordinateAxes	
 
 . data
-stdin		BYTE X'00'
-stdout		BYTE X'01'
-white		WORD 0x0000FF
-red			WORD 0x0000F0
-green		WORD 0x0000CC
-yellow		WORD 0x0000FC
-color		WORD 0x79
-cols		WORD 109
-rows		WORD 109
-col			WORD 0
-row			WORD 0
-temp		WORD 0
-screenOrg	WORD 0x0A000
-screenMax	WORD 0
-screenTemp  WORD 0
-address		WORD 0
-jump		WORD 0
-jumpPoint	WORD 0
-cross 		WORD 0
-x			WORD 0
-tempNeg		WORD 0
-testiram 	WORD 0
-testiram1 	WORD 0
-testiram2 	WORD 0
-isVariable	WORD 0 ..... 0 = ni function odvisna od x, 1 => y = x, 2 => y = -x
+
+... input and output variables
+stdin				BYTE X'00'
+stdout				BYTE X'01'
+
+cols				WORD 109
+rows				WORD 109
+col					WORD 0
+row					WORD 0
+
+... variables for color and type of printing in graphical screen
+color				WORD 0x79
+white				WORD 0x0000FF
+red					WORD 0x0000F0
+green				WORD 0x0000CC
+yellow				WORD 0x0000FC
+cross 				WORD 0
+
+... screen-values
+screenOrg			WORD 0x0A000
+screenMax			WORD 0
+screenTemp  		WORD 0
+
+address				WORD 0
+jump				WORD 0
+jumpPoint			WORD 0
+
+... temporary variables 
+temp				WORD 0
+negativeTemp		WORD 0
+
+... variable to check type of function
+isVariable			WORD 0 				... 0 => y = constant , 1 => y = x, 2 => y = -x
+
+... stdout messages
 commandInput BYTE C'Enter Command '
 prgmendmsg BYTE C'Program has terminated'
+
 			END    initialize

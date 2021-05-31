@@ -40,16 +40,15 @@ Commands:
 
 ### The following are some snaps of the simulations of our program:
 
-![Simulation Results - 1](./Simulations/p23r.png "Command: p23r") 
-![Simulation Results - 2](./Simulations/p2-1Ky&p-14Kg.png "Command:  p2-1Ky p-14Kg") 
-![Simulation Results - 3](./Simulations/fxg.png "Command: fxg")
-![Simulation Results - 4](./Simulations/f-xr.png "Command: f-xr")
-![Simulation Results - 5](./Simulations/f-2w&f1r.png "Command: f-2w f1r")
+![Simulation Results - 1](./Simulations/Points.png "Command: pxy{color}") 
+![Simulation Results - 2](./Simulations/Crosses.png "Command:  pxyK{color}") 
+![Simulation Results - 3](./Simulations/Functions.png "Command: fx{color} and f-x{color}")
+![Simulation Results - 4](./Simulations/Functions2.png "Command: fn{color}")
 
 ### Multiple inputs at once:
 
-![Simulation Results - 6](./Simulations/allSims.png "Multiple Sims and Inputs")
-![Simulation Results - 7](./Simulations/allSimsClear.png "Multiple Sims and Inputs Cleared")
-
+![Simulation Results - 6](./Simulations/All1.png "Multiple Sims and Inputs")
+![Simulation Results - 7](./Simulations/terminalAll1.png "Inputs for multiple sims image above")
+![Simulation Results - 8](./Simulations/All2.png "Clear command")
 
 
