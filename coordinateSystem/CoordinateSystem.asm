@@ -1,66 +1,55 @@
 primer  START  0
 
-first
-	LDA rows		...calculate max screen address
-	MUL cols
+initialize
+	LDA rows		
+	MUL cols						... for doing rows x cols to get the screen area in the accumulator
 	ADD screenOrg
 	STA screenMax
+	
 	LDA =0
-	JSUB initializeCoordinateAxes   ...function that draws initial graph
+	JSUB initializeCoordinateAxes   ... plotting the coordinate axes
 	
 .........................
 
-startLoop
+programBegin			... this is the initial loop for taking inputs and executing commands 
 	JSUB enterInput
 	TD stdin
 	RD stdin			
-	COMP =0x30			...if '0' on input, end program (inf. loop)
+	
+	COMP =0x30			... if '0' is the input then end the program 
 	JEQ EOP
-	COMP =0x70			...if 'p' on input, print point
+	
+	COMP =0x70			... if 'p' is the input then plot the point 
 	JEQ point			
-	COMP =0x66			...if 'f' on input, print function
-	JEQ fun
-	COMP =0x63			...if 'c' on input, clear screen
+	
+	COMP =0x66			... if 'f' is the input, then plot the function
+	JEQ drawFunctions
+	
+	COMP =0x63			... 'c' as input clears the screen, preserving only the coordinate axes
 	JEQ clr
-	J endmsg			...if invalid input, end program (inf. loop)
-
+	
+	J endmsg			... displays end message and terminates the program
 ...........................
 
+...This block contains code for taking input and printing in the command line
+
 enterInput
-	LDCH commandInput, X	...print the message requesting for enter input
+	LDCH commandInput, X	... print the message requesting for enter input
 	WD stdout
 	TIX =14
 	JLT enterInput
+	
 	LDX =0
-	LDA =0x24
+	
+	LDA =0x24				... printing the dollar symbol before taking input
 	WD stdout
 	RSUB
 
-fun
-	JSUB function		....function for drawing functions
-	J again
-
-clr
-	JSUB clearScreen	....function for clearing screen
-	J again
-
-point
-	JSUB drawPointFunction		....function for drawing points
-
-again
-	RD stdin			...Next line
-	LDA =0
-	STA col				...reset row and column that were used
-	STA row
-	J startLoop
-
-..........................
-
-EOP						...end of program, triggered by incorrect input
+EOP							... end of program, triggered by incorrect input
 	RD stdin
 
 endmsg
-	LDCH prgmendmsg, X		...print the message that program has ended
+	LDCH prgmendmsg, X		... print the message that program has ended
 	WD stdout
 	TIX =22
 	JLT endmsg
@@ -73,18 +62,21 @@ halt    J      halt
 
 .................
 
-...calculating the address of a cell- row * cols + col + screenOrg
-calcAddr
-	STA temp
-	LDA row
-	MUL cols
-	ADD col
-	ADD screenOrg
-	STA address
-	LDA temp
-	RSUB
-	
-..................
+...this block contains code for plotting various outputs in the graphical screen
+
+drawFunctions
+	JSUB drawLine					... function for drawing the given lines
+	J again
+
+point
+	JSUB drawPointFunction			... function for drawing points
+	J again
+
+...fuctions for clearing the screen
+clr
+	JSUB clearScreen				... function for clearing screen
+	J again
+
 
 clearScreen
 	STL jumpPoint
@@ -92,52 +84,81 @@ clearScreen
 	STA row
 	STA col
 	
-	...Nested loop that iterates over the whole screen, setting all the address to 0
-clearLoop
-	JSUB calcAddr	...Calculates the address
+	
+resetAddresses						... We iterate over the whole screen, and set all the values to 0
+	JSUB calcAddr					... Calculates the address
 	LDA =0
 	STA @address
+	
 	LDA col
 	ADD =3
 	STA col
 	COMP cols
-	JLT clearLoop
+	JLT resetAddresses
 		
 	LDA =0	
 	STA col
+	
 	LDA row
 	ADD =1	
 	STA row
 	COMP rows	
-	JLT clearLoop
+	JLT resetAddresses
 		
-	JSUB initializeCoordinateAxes	...after screen is cleared, redraw axes
+	JSUB initializeCoordinateAxes	... after screen is cleared, redraw axes
 	LDL jumpPoint
 	RSUB
-	
-.................
 
-...Utility to draw functions('f' as input)
-function
+calcAddr							... calculating the address of a cell--> row * cols + col + screenOrg
+	STA temp
+	
+	LDA row
+	MUL cols
+	ADD col
+	ADD screenOrg
+	STA address
+	
+	LDA temp
+	RSUB
+
+again								... here we reset the rows and columns that were used to 0
+	RD stdin			
+	LDA =0
+	STA col				
+	STA row
+	J programBegin
+
+..........................
+
+...this code block contains code for drawing the three different types of fucntions
+
+drawLine				... drawing functions when 'f' is the input
 	STL jump
-	JSUB getFun		...Read other parameters of input
-	LDA functionSpr	...variable that tells us what kind of function we have
-	COMP =0			...if functionSpr == 0 then we have a function of type y = 2 (not dependant on x)
-	JGT functionDone	...skip if functionSpr > 0, because it was already drawn
+	JSUB getFun			... Read other parameters of input
+	
+	LDA isVariable		... it checks whether we have ton draw y = const or y = +-x
+	COMP =0				... if isVariable == 0 then we have a function of type y = constant
+	JGT functionDone	... we skip if isVariable > 0, because it would already have been executed
+	
 	JSUB getColor	
 	LDA =0
 	
-functionLoop		...Draw the function if functionSpr = 0
-		STA col
-		JSUB calcAddr
-		LDA color
-		STCH @address
-		LDA col 
-		ADD =1
-		COMP cols
-	JLT functionLoop
+drawConstFunction		...Draw the function y = constant when isVariable = 0
+	STA col
+	JSUB calcAddr
+	
+	LDA color
+	STCH @address
+	
+	LDA col 
+	ADD =1
+	
+	COMP cols
+	JLT drawConstFunction
 
-functionDone	.... When done reset col and row
+...once the above loop is complete, the functionDone is executed
+
+functionDone			... Reset col and row after drawing of function is complete
 	LDA =0
 	STA col
 	STA row
@@ -146,63 +167,71 @@ functionDone	.... When done reset col and row
 
 .................	
 
-...Function for drawing points
-drawPointFunction
+drawPointFunction		... Function for drawing points
 	STL jump
 	
-	JSUB getCol	..gets column where we want to draw
-	JSUB getRow	 ..gets row where we want to draw
-	JSUB drawPoint ..draws the point
+	JSUB getCol			... gets column where we want to draw
+	JSUB getRow	 		... gets row where we want to draw
+	JSUB drawPoint 		... draws the point
 	
 	LDL jump
 	RSUB
 .................
-getFun
-	STL jumpPoint	...save L register	
-	JSUB getRow     ...get the function that was on input
-	LDA functionSpr 
-	COMP =0
-	JEQ gotFun      ...if function of type y = n (not dependant of x), then draw it in the other subroutine
-	JSUB getColor  ...otherwise get color
-	COMP =2
-	JEQ posFunction	...y = x
-	COMP =1
-	JEQ negFunction ...y = -x
-	
 
-posFunction
-		LDA screenMax	...start at first column of last row
+getFun
+	STL jumpPoint		... save the L register	(if y = const, this would contain the 'n' value)
+	JSUB getRow     	... get the function that was on input (either y = const or +-x)
+	LDA isVariable 		
+	... isVariable stores which type of function (0 => y = const, 1 => y = -x, and 2 => y = x)
+	
+	COMP =0
+	JEQ gotFun      	... if function of type y = n (not dependant of x), then draw it in the other subroutine
+	
+	JSUB getColor  		... otherwise get color
+	
+	COMP =2
+	JEQ drawPositiveLine		... draws the line y = x on the graphical screen
+	
+	COMP =1
+	JEQ drawNegativeLine 	...	draws the line y = -x on the graphical screen
+	
+... for plotting the y = x line
+drawPositiveLine
+		LDA screenMax	... start at first column of last row
 		SUB =110
 		STA address
 		LDA screenOrg
 		ADD =109
-		STA screenTemp	...end at last column of first row
+		STA screenTemp	... end at last column of first row
 
-posFunLoop				...draw function
-		LDA color
+loopPositiveLine				... draw function
+		LDA color 
 		STCH @address
 		LDA address
 		SUB =108		...equivalent to: row - 1, col - 1
 		STA address
 		COMP screenTemp
-	JGT posFunLoop
+	JGT loopPositiveLine
 	J gotFun
-	
-negFunction
-		LDA screenMax	...start at last column of last row
+.......
+
+... for plotting the y = -x line 
+drawNegativeLine
+		LDA screenMax	... start at last column of last row
 		STA address
 		
-negFunLoop
+loopNegativeLine
 		LDA color
 		STCH @address
 		LDA address
-		SUB =110		...equivalent to: row + 1, col + 1
+		SUB =110		... equivalent to: row + 1, col + 1
 		STA address
-		COMP screenOrg	...end at first element of screen
-	JGT negFunLoop	
-	
+		COMP screenOrg	... end at first element of screen
+	JGT loopNegativeLine	
+......
+
 gotFun
-	LDL jumpPoint	...reload L register
+	LDL jumpPoint		... reload L register
 	RSUB
 	
 .................	
@@ -211,15 +240,15 @@ getCol
 	LDA =0	
 	STA col
 	TD stdin
-	RD stdin		...get column where to draw from input: [-5,5]
-	COMP =0x2D		...if '-' on input
+	RD stdin			... get column where to draw from input: [-5,5]
+	COMP =0x2D			... if '-' on input
 	JEQ colNeg
 	
 	....positive x coordinate, normalize input according to size of screen
 	SUB =48	
 	MUL =10	
 	ADD =54
-	J concCol
+	J colPosition
 	
 	....negative x coordinate, normalize input according to size of screen
 colNeg
@@ -231,7 +260,7 @@ colNeg
 	MUL =10
 	ADD =3
 	
-concCol
+colPosition
 	STA col	...store normalized input to variable
 	RSUB
 
@@ -241,72 +270,76 @@ concCol
 getRow 
 	LDA =0
 	STA row
-	TD stdin	... testing device before taking input
-	RD stdin
-	COMP =0x78
-	JEQ functionPos
-	COMP =0x2D
-	JEQ negRow
 	
-	....primer positivne koordinate y-os
+	TD stdin						... testing device before taking input
+	RD stdin						... reads whether x or - or const
+	
+	COMP =0x78						... comparing with x
+	JEQ positiveLine				... draw y = x, if input is x
+	
+	COMP =0x2D						... checks if '-' is present
+	JEQ negativeFunction			... draw y = -x or y = -ve constant, if input is '-'
+	
+	...find the position of the line above x-axis in the graphical screen
 	SUB =48
-	STA tempNeg
-	LDA =5
-	SUB tempNeg
-	STA testiram
-	MUL =10
-	ADD =3	
-	J concRow
+	MUL =-10
+	ADD =53
+	J rowPosition
 
-negRow	
-	....primer negativne koordinate y-os
+negativeFunction					... checks whether negative constant line or y = -x and draws them
+
+	TD stdin
 	RD stdin
-	COMP =0x78
-	JEQ functionNeg
+
+	COMP =0x78						... compare with 'x' 
+	JEQ negativeLine				... if found 'x', then draw y = -x
+
+	... calculating the position of the negative line on the screen
 	SUB =48
 	MUL =10
 	ADD =54
-	J concRow
+	J rowPosition
 	
-	....if input is a positive function
-functionPos
+	... if input is a positive line (fx{color} i.e y = x)
+positiveLine
 	LDA =2
-	STA functionSpr
-	J concRow2
+	STA isVariable
+	J rowPosition2
 	
-	....if input is a negative function
-functionNeg
+	... if input is a negative line i.e y = -x
+negativeLine
 	LDA =1
-	STA functionSpr
-	J concRow2
+	STA isVariable
+	J rowPosition2
 	
-	...when done, store to varibles
-concRow
+	... when done, store to variables
+rowPosition
 	STA row
 	LDA =0
-	STA functionSpr ...if input function is not dependant on x
-concRow2
-	RSUB
+	STA isVariable 					... if input function is not dependent on x
+
+rowPosition2		
+	RSUB							... returns to getFun function, so that we can draw our graph
 
 .................
 
 drawPoint
 	STL jumpPoint 		... save L register
 	JSUB getColor  		... get color of the point
-	JSUB calcAddr 	... get address
+	JSUB calcAddr 		... get address
 	LDA color 
 	STCH @address    	... draw point
 	LDA cross     		... check if 'K' was in input (is set in getColor)
 	COMP =1        		... if cross == 0, jump to end of function
 	JLT resetCross
 	...
-	LDA address	   ...draw cross	
-	SUB =108	   ...row - 1 + col + 1
+	LDA address	   		... draw cross	
+	SUB =108	   		... row - 1 + col + 1
 	STA address
 	LDA color
 	STCH @address
 	LDA address
-	SUB =2       ...row - 1, col + 1
+	SUB =2       		... row - 1, col + 1
 	STA address
 	LDA color
 	STCH @address
@@ -318,14 +351,14 @@ drawPoint
 	LDA color
 	STCH @address
 	LDA address
-	ADD =2       ...row - 1, col + 1
-	STA address
+	ADD =2       		... row - 1, col + 1
+	STA address	
 	LDA color
 	STCH @address
 	
 resetCross
 	LDA =0
-	STA cross	  ... reset cross variable
+	STA cross	  		... reset cross variable
 	LDL jumpPoint
 	RSUB	
 	
@@ -334,37 +367,50 @@ resetCross
 ...Function that reads the color from input
 getColor
 	STA temp
-	TD stdin 		...... testing device before taking input
+	
+	TD stdin 		... testing device before taking input
 	RD stdin
+	
 	COMP =0x67
-	JLT crossJmp	...if 'K' on input, jump (in reality anything that has ASCII < 0x67 will work)
-	COMP =0x77		...'w'-> white
+	JLT crossJmp	... if 'K' on input (also any variable with ascii less than 'K' would work)
+	
+	COMP =0x77		... 'w'-> white
 	JEQ whiteColor
-	COMP =0x72		...'r'-> red	
+	
+	COMP =0x72		... 'r'-> red	
 	JEQ redColor
-	COMP =0x67		...'g'-> green
+	
+	COMP =0x67		... 'g'-> green
 	JEQ greenColor
-	COMP =0x79		...'y'-> yellow
+	
+	COMP =0x79		... 'y'-> yellow
 	JEQ yellowColor
 	
 	J gotColor
 	
 crossJmp
 	LDA =1
-	STA cross		...if 'K' on input, read again to get color
+	STA cross		... if 'K' on input, read again to get color
+	
+	TD stdin
 	RD stdin
+	
 	COMP =0x67
 	JLT cross
-	COMP =0x77		...'w'-> white
+	
+	COMP =0x77		... 'w'-> white
 	JEQ whiteColor
-	COMP =0x72		...'r'-> red	
+	
+	COMP =0x72		... 'r'-> red	
 	JEQ redColor
-	COMP =0x67		...'g'-> green
+	
+	COMP =0x67		... 'g'-> green
 	JEQ greenColor
-	COMP =0x79		...'y'-> yellow
+	
+	COMP =0x79		... 'y'-> yellow
 	JEQ yellowColor	
 	
-...Store colors into color variable
+... Store colors into color variable
 yellowColor
 	LDA yellow
 	STA color 
@@ -391,11 +437,11 @@ gotColor
 
 ..................
 
-..Function that draws inital graph (x and y axis)
+... Function to draw the coordinate axes
 initializeCoordinateAxes
-	STL jump		..save L register
+	STL jump		... save L register
 	STA temp
-	LDA =0			..Start in center of the first row
+	LDA =0			... Start in center of the first row
 	STA row		
 	LDA =54			
 	STA col
@@ -489,7 +535,8 @@ vodAdd10
 	LDA temp
 	LDL jump
 	RSUB
-...........................End of initializeCoordinateAxes	
+	
+.... End of initializeCoordinateAxes	
 
 . data
 stdin		BYTE X'00'
@@ -516,7 +563,7 @@ tempNeg		WORD 0
 testiram 	WORD 0
 testiram1 	WORD 0
 testiram2 	WORD 0
-functionSpr	WORD 0 ..... 0 = ni function odvisna od x, 1 => y = x, 2 => y = -x
+isVariable	WORD 0 ..... 0 = ni function odvisna od x, 1 => y = x, 2 => y = -x
 commandInput BYTE C'Enter Command '
 prgmendmsg BYTE C'Program has terminated'
-			END    first
+			END    initialize
